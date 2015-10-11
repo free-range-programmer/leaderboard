@@ -2,15 +2,8 @@
 /*** Constants ****************************************************************/
 /******************************************************************************/
 
-// column designations
-var NAME = 1;
-var SCORE = 2;
-var ATHLETE = 3;
-var GENDER = 4;
-var LEVEL = 5;
-
 // google sheets
-var URL = 'https://docs.google.com/spreadsheets/d/1bjT_-YNPEP60dvXaX4SPRoficz7073W9Cf-wZstS97Q/pub?gid=237348841&output=csv';
+var URL = 'https://spreadsheets.google.com/feeds/list/1bjT_-YNPEP60dvXaX4SPRoficz7073W9Cf-wZstS97Q/1/public/values?alt=json-in-script&callback=load_JSONP'
 
 /******************************************************************************/
 /*** Supplementary Functions **************************************************/
@@ -74,91 +67,22 @@ function compare_PRs(a, b) {
     return 0;
 }
 
-// pivot the data about WOD, gender, and level
-function parse_CSV(csv) {
+// download the JSON and run success(data) if everything is OK
+function get_JSON(URL) {
 
-    var wods = {
-        'Rx': {},
-        'Scaled': {},
-        'Lift': {}
-    };
+    // poor man's CORS
+    var script = _('script');
+    script.type = 'text/javascript';
+    $('loader').appendChild(script);
 
-    var lines = csv.split(/\n/);
-
-    for(var i = 1; i < lines.length; i++) {
-
-        // separate line in to fields and trim the edge spaces
-        var entry = lines[i].split(/,/).map(function(_) {
-            return _.trim();
-        });
-
-        if(entry[0].length) {
-
-            var wod_name = entry[NAME];
-            var gender = entry[GENDER];
-
-            // prescribed is the default
-            var level = entry[LEVEL] || 'Rx';
-
-            if(!(wod_name in wods[level]))
-                wods[level][wod_name] = {};
-            if(!(gender in wods[level][wod_name]))
-                wods[level][wod_name][gender] = [];
-
-            // store the athlete name and score in an appropriate category
-            wods[level][wod_name][gender].push({
-                score: entry[SCORE],
-                athlete: entry[ATHLETE]
-            });
-        }
+    // once loaded, destroy the script object, it is no longer necessary
+    script.onload = function() {
+        this.parentNode.removeChild(this);
     }
 
-    // sort
-    for(var level in wods)
-        for(var wod in wods[level])
-            for(var gender in wods[level][wod])
-                wods[level][wod][gender] = wods[level][wod][gender].sort(compare_PRs);
-
-    // eliminate duplicate athletes
-    for(var level in wods)
-        for(wod in wods[level])
-            for(var gender in wods[level][wod]) {
-                var athletes = {};
-                for(var i in wods[level][wod][gender]) {
-                    var athlete = wods[level][wod][gender][i].athlete;
-                    if(athlete in athletes)
-                        wods[level][wod][gender].splice(i, 1);
-                    else
-                        athletes[athlete] = true;
-                }
-        }
-
-    return wods;
+    // initiate the request 
+    script.src = URL;
 }
-
-// download the CSV and run success(data) if everything is OK
-function get_CSV(URL, success) {
-
-    // create the request object
-    var call = new XMLHttpRequest();
-
-    // open the request
-    call.open('GET', URL);
-
-    // what to do on success
-    call.onload = function() {
-        success(call.responseText);
-    }
-
-    // what to do on error
-    call.onerror = function() {
-        console.log(call.responseText);
-    }
-
-    // initiate the GET
-    call.send();
-}
-
 
 // create the HTML of the leaderboard for a given WOD
 function create_wod_leaderboard(wod_name, wod, top) {
@@ -181,7 +105,6 @@ function create_wod_leaderboard(wod_name, wod, top) {
         tr.appendChild(_('td')).innerHTML = i in women ? women[i].score : '&nbsp';
         table.appendChild(tr);
     }
-
 
     div.classList.add('wod');
     div.appendChild(_('div')).innerHTML = wod_name;
@@ -207,14 +130,71 @@ function create_leaderboard(wods, object) {
         );
 }
 
+// pivot the data about WOD, gender, and level
+function parse_JSON(json) {
+
+    var wods = {
+        'Rx': {},
+        'Scaled': {},
+        'Lift': {}
+    };
+
+    var lines = json.feed.entry;
+    
+    for(var i = 1; i < lines.length; i++) {
+
+        var wod_name = lines[i].gsx$personalrecord.$t;
+        var gender = lines[i].gsx$gender.$t;
+
+        // prescribed is the default
+        var level = lines[i].gsx$leveltype.$t || 'Rx';
+
+        if(!(wod_name in wods[level]))
+            wods[level][wod_name] = {};
+        if(!(gender in wods[level][wod_name]))
+            wods[level][wod_name][gender] = [];
+
+        // store the athlete name and score in an appropriate category
+        wods[level][wod_name][gender].push({
+            score: lines[i].gsx$score.$t,
+            athlete: lines[i].gsx$name.$t
+        });
+    }
+
+    // sort
+    for(var level in wods)
+        for(var wod in wods[level])
+            for(var gender in wods[level][wod])
+                wods[level][wod][gender] = wods[level][wod][gender].sort(compare_PRs);
+
+    // eliminate duplicate athletes
+    for(var level in wods)
+        for(wod in wods[level])
+            for(var gender in wods[level][wod]) {
+                var athletes = {};
+                for(var i in wods[level][wod][gender]) {
+                    var athlete = wods[level][wod][gender][i].athlete;
+                    if(athlete in athletes)
+                        wods[level][wod][gender].splice(i, 1);
+                    else
+                        athletes[athlete] = true;
+                }
+        }
+
+    return wods;
+}
+
+// callback function for the JSONP request
+function load_JSONP(json) {
+    var wods = parse_JSON(json);
+    create_leaderboard(wods['Rx'], $('rx'));
+    create_leaderboard(wods['Scaled'], $('scaled'));
+    create_leaderboard(wods['Lift'], $('lift'));
+}
+
 // initiate a 60-second refresh cycle
 function show_leaderboard() {
-    get_CSV(URL, function(csv) {
-        wods = parse_CSV(csv);
-        create_leaderboard(wods['Rx'], $('rx'));
-        create_leaderboard(wods['Scaled'], $('scaled'));
-        create_leaderboard(wods['Lift'], $('lift'));
-    });
+    get_JSON(URL);
     window.setTimeout(show_leaderboard, 60000);
 }
 
