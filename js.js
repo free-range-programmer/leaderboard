@@ -95,7 +95,7 @@ function create_wod_leaderboard(wod_name, wod, top) {
 
     // number of top athletes per category
     if(typeof(top) === 'undefined')
-        top = 5;
+        top = 10;
 
     for(var i = 0; i < Math.max(men.length, women.length) && i < top; i++) {
         var tr = _('tr');
