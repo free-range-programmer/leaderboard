@@ -90,19 +90,50 @@ function create_wod_leaderboard(wod_name, wod, top) {
     var div = _('div');
     var table = _('table');
 
-    var men = wod['Male'] || [];
-    var women = wod['Female'] || [];
+    var athletes = [
+        wod['Male'] || [],
+        wod['Female'] || [],
+        wod['Neither'] || []
+    ];
+
+    var gender_titles = [
+        'Men',
+        'Women',
+        'Neither'
+    ];
+
+    // find the length of a given WOD plaque
+    var length = Math.max.apply(null,
+            athletes.map(
+                function(_) {
+                    return _.length;
+                }
+            )
+        );
 
     // number of top athletes per category
     if(typeof(top) === 'undefined')
         top = 10;
 
-    for(var i = 0; i < Math.max(men.length, women.length) && i < top; i++) {
+    // create the gender headers
+    var tr = _('tr');
+    for(var gender in athletes)
+        if(athletes[gender].length) {
+            var td = _('td');
+            td.setAttribute('colspan', 2);
+            tr.appendChild(td).innerHTML = gender_titles[gender];
+        }
+    table.appendChild(tr);
+
+    for(var i = 0; i < length && i < top; i++) {
         var tr = _('tr');
-        tr.appendChild(_('td')).innerHTML = i in men ? men[i].athlete : '&nbsp';
-        tr.appendChild(_('td')).innerHTML = i in men ? men[i].score : '&nbsp';
-        tr.appendChild(_('td')).innerHTML = i in women ? women[i].athlete : '&nbsp';
-        tr.appendChild(_('td')).innerHTML = i in women ? women[i].score : '&nbsp';
+        for(var gender in athletes) {
+            var subgroup = athletes[gender];
+            if(subgroup.length) {
+                tr.appendChild(_('td')).innerHTML = i in subgroup ? subgroup[i].athlete : '&nbsp';
+                tr.appendChild(_('td')).innerHTML = i in subgroup ? subgroup[i].score : '&nbsp';
+            }
+        }
         table.appendChild(tr);
     }
 
