@@ -144,21 +144,27 @@ function parse_JSON(json) {
     for(var i = 1; i < lines.length; i++) {
 
         var wod_name = lines[i].gsx$personalrecord.$t;
-        var gender = lines[i].gsx$gender.$t;
 
-        // prescribed is the default
-        var level = lines[i].gsx$leveltype.$t || 'Rx';
+        // ignore empty entries
+        if(wod_name.length) {
 
-        if(!(wod_name in wods[level]))
-            wods[level][wod_name] = {};
-        if(!(gender in wods[level][wod_name]))
-            wods[level][wod_name][gender] = [];
+            // gender
+            var gender = lines[i].gsx$gender.$t;
 
-        // store the athlete name and score in an appropriate category
-        wods[level][wod_name][gender].push({
-            score: lines[i].gsx$score.$t,
-            athlete: lines[i].gsx$name.$t
-        });
+            // prescribed is the default
+            var level = lines[i].gsx$leveltype.$t || 'Rx';
+
+            if(!(wod_name in wods[level]))
+                wods[level][wod_name] = {};
+            if(!(gender in wods[level][wod_name]))
+                wods[level][wod_name][gender] = [];
+
+            // store the athlete name and score in an appropriate category
+            wods[level][wod_name][gender].push({
+                score: lines[i].gsx$score.$t,
+                athlete: lines[i].gsx$name.$t
+            });
+        }
     }
 
     // sort
