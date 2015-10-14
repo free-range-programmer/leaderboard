@@ -276,7 +276,7 @@ function load_JSONP(json) {
     var results = parse_JSON(json);
 
     // #stuff from the URL
-    var hash = window.location.hash.substr(1).trim();
+    var hash = decodeURI(window.location.hash.substr(1)).trim();
     var cutoff = parseInt(hash);
     if(!isFinite(cutoff) || cutoff < 1)
         cutoff = 5;
