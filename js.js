@@ -85,7 +85,7 @@ function get_JSON(URL) {
 }
 
 // create the HTML of the leaderboard for a given WOD
-function create_wod_leaderboard(wod_name, wod, top) {
+function create_wod_leaderboard(wod_name, wod, cutoff) {
 
     var div = _('div');
     var table = _('table');
@@ -111,9 +111,9 @@ function create_wod_leaderboard(wod_name, wod, top) {
             )
         );
 
-    // number of top athletes per category
-    if(typeof(top) === 'undefined')
-        top = 10;
+    // number of cutoff athletes per category
+    if(typeof(cutoff) === 'undefined')
+        cutoff = 10;
 
     // create the gender headers
     var tr = _('tr');
@@ -125,13 +125,25 @@ function create_wod_leaderboard(wod_name, wod, top) {
         }
     table.appendChild(tr);
 
-    for(var i = 0; i < length && i < top; i++) {
+    for(var i = 0; i < length && i < cutoff; i++) {
         var tr = _('tr');
         for(var gender in athletes) {
             var subgroup = athletes[gender];
             if(subgroup.length) {
-                tr.appendChild(_('td')).innerHTML = i in subgroup ? subgroup[i].athlete : '&nbsp';
-                tr.appendChild(_('td')).innerHTML = i in subgroup ? subgroup[i].score : '&nbsp';
+                if(i in subgroup) {
+                    var a = _('a');
+                    a.href = '#' + subgroup[i].athlete;
+                    a.innerHTML = subgroup[i].athlete;
+                    a.onclick = function() {
+                        window.location.reload();
+                    };
+                    tr.appendChild(_('td')).appendChild(a);
+                    tr.appendChild(_('td')).innerHTML = subgroup[i].score;
+                }
+                else {
+                    tr.appendChild(_('td')).innerHTML = '&nbsp';
+                    tr.appendChild(_('td')).innerHTML = '&nbsp';
+                }
             }
         }
         table.appendChild(tr);
@@ -145,7 +157,7 @@ function create_wod_leaderboard(wod_name, wod, top) {
 }
 
 // crete the HTML for the leaderboard
-function create_leaderboard(wods, object) {
+function create_leaderboard(wods, object, cutoff) {
 
     // sort the WOD names, for posterity
     var wod_names = [];
@@ -157,8 +169,24 @@ function create_leaderboard(wods, object) {
     object.innerHTML = '';
     for(var i in wod_names)
         object.appendChild(
-            create_wod_leaderboard(wod_names[i], wods[wod_names[i]])
+            create_wod_leaderboard(wod_names[i], wods[wod_names[i]], cutoff)
         );
+}
+
+// create the HTML for the individual's PR
+function individual_PR(title, score) {
+    var div = _('div');
+    div.classList.add('individual_pr');
+    div.appendChild(_('div')).innerHTML = title;
+    div.appendChild(_('div')).innerHTML = score;
+    return div;
+}
+
+// create individual screen
+function create_individual_screen(wods, object) {
+    object.innerHTML = '';
+    for(var wod in wods)
+        object.appendChild(individual_PR(wod, wods[wod][0].score));
 }
 
 // pivot the data about WOD, gender, and level
@@ -167,14 +195,16 @@ function parse_JSON(json) {
     var wods = {
         'Rx': {},
         'Scaled': {},
-        'Lift': {}
+        'Lift': {},
     };
 
+    var per_athlete = {};
+
     var lines = json.feed.entry;
-    
+
     for(var i = 1; i < lines.length; i++) {
 
-        var wod_name = lines[i].gsx$personalrecord.$t;
+        var wod_name = lines[i].gsx$personalrecord.$t.trim();
 
         // ignore empty entries
         if(wod_name.length) {
@@ -192,8 +222,9 @@ function parse_JSON(json) {
 
             // store the athlete name and score in an appropriate category
             wods[level][wod_name][gender].push({
-                score: lines[i].gsx$score.$t,
-                athlete: lines[i].gsx$name.$t
+                timestamp: lines[i].gsx$timestamp.$t,
+                score: lines[i].gsx$score.$t.trim(),
+                athlete: lines[i].gsx$name.$t.trim()
             });
         }
     }
@@ -210,7 +241,23 @@ function parse_JSON(json) {
             for(var gender in wods[level][wod]) {
                 var athletes = {};
                 for(var i in wods[level][wod][gender]) {
-                    var athlete = wods[level][wod][gender][i].athlete;
+                    var entry = wods[level][wod][gender][i];
+                    var athlete = entry.athlete;
+
+                    if(athlete) {
+                        if(!(athlete in per_athlete))
+                            per_athlete[athlete] = {};
+                        if(!(level in per_athlete[athlete]))
+                            per_athlete[athlete][level] = {};
+                        if(!(wod in per_athlete[athlete][level]))
+                            per_athlete[athlete][level][wod] = [];
+
+                        per_athlete[athlete][level][wod].push({
+                            timestamp: entry.timestamp,
+                            score: entry.score
+                        });
+                    }
+
                     if(athlete in athletes)
                         wods[level][wod][gender].splice(i, 1);
                     else
@@ -218,15 +265,48 @@ function parse_JSON(json) {
                 }
         }
 
-    return wods;
+    return {
+        wods: wods,
+        athletes: per_athlete
+    };
 }
 
 // callback function for the JSONP request
 function load_JSONP(json) {
-    var wods = parse_JSON(json);
-    create_leaderboard(wods['Rx'], $('rx'));
-    create_leaderboard(wods['Scaled'], $('scaled'));
-    create_leaderboard(wods['Lift'], $('lift'));
+    var results = parse_JSON(json);
+
+    // #stuff from the URL
+    var hash = window.location.hash.substr(1).trim();
+    var cutoff = parseInt(hash);
+    if(!isFinite(cutoff) || cutoff < 1)
+        cutoff = 5;
+
+    if(hash.length && hash.match(/\D/)) {
+        var a = _('a');
+        a.href = '';
+        a.innerHTML = hash;
+        a.onclick = function() {
+            window.location.reload();
+        }
+
+        $('rx_title').innerHTML = '';
+        $('rx_title').appendChild(a);
+        $('scaled_title').innerHTML = '';
+        $('lift_title').innerHTML = '';
+        create_individual_screen(results.athletes[hash]['Rx'], $('rx'));
+        create_individual_screen(results.athletes[hash]['Scaled'], $('scaled'));
+        create_individual_screen(results.athletes[hash]['Lift'], $('lift'));
+        $('back').classList.remove('hidden');
+        $('back').onclick = function() {
+            window.location = '';
+            window.reload();
+        }
+    }
+    else {
+        create_leaderboard(results.wods['Rx'], $('rx'), cutoff);
+        create_leaderboard(results.wods['Scaled'], $('scaled'), cutoff);
+        create_leaderboard(results.wods['Lift'], $('lift'), cutoff);
+    }
 }
 
 // initiate a 60-second refresh cycle

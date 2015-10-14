@@ -3,12 +3,24 @@ body {
     background:#000 url(small_logo.png) right top no-repeat;
 }
 
+a {
+    font:inherit;
+    color:inherit;
+    text-decoration:inherit;
+}
+
+.individual_pr,
 .wod {
     display:inline-block;
     opacity:.75;
     margin:1em;
 }
 
+.individual_pr div:first-child {
+    opacity:.75;
+}
+
+.individual_pr div,
 .wod div:first-child {
     background:#de9a1d;
     color:#000;
@@ -17,6 +29,13 @@ body {
     text-transform:uppercase;
     border-top-left-radius:.5em;
     border-top-right-radius:.5em;
+}
+
+.individual_pr div:last-child {
+    text-align:center;
+    border-radius:0;
+    border-bottom-left-radius:.5em;
+    border-bottom-right-radius:.5em;
 }
 
 .wod table {
@@ -67,4 +86,22 @@ body {
 h1 {
     text-align:center;
     font:50pt helvetica;
+}
+
+.hidden {
+    display:none;
+}
+
+#back {
+    position:absolute;
+    left:1em;
+    top:1em;
+    background:#de9a1d;
+    color:#000;
+    padding:.5em;
+    font:bold 150% sans-serif;
+    text-transform:uppercase;
+    border-radius:.5em;
+    cursor:pointer;
+    opacity:.25;
 }
