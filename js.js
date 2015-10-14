@@ -135,6 +135,7 @@ function create_wod_leaderboard(wod_name, wod, cutoff) {
                     a.href = '#' + subgroup[i].athlete;
                     a.innerHTML = subgroup[i].athlete;
                     a.onclick = function() {
+                        window.location = this.href;
                         window.location.reload();
                     };
                     tr.appendChild(_('td')).appendChild(a);
