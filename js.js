@@ -53,7 +53,7 @@ function compare_PRs(a, b) {
     // [min, sec]
     score = [0, 1].map(function(i) {
         return [1, 3].map(function(j) {
-            return score[i][j];
+            return parse(score[i][j]);
         });
     });
 
@@ -125,7 +125,7 @@ function create_wod_leaderboard(wod_name, wod, cutoff) {
         }
     table.appendChild(tr);
 
-    for(var i = 0; i < length && i < cutoff; i++) {
+    for(var i = 0; i < length && (i < cutoff || cutoff < 0); i++) {
         var tr = _('tr');
         for(var gender in athletes) {
             var subgroup = athletes[gender];
@@ -241,7 +241,7 @@ function parse_JSON(json) {
         for(wod in wods[level])
             for(var gender in wods[level][wod]) {
                 var athletes = {};
-                for(var i in wods[level][wod][gender]) {
+                for(var i = 0; i < wods[level][wod][gender].length; i++) {
                     var entry = wods[level][wod][gender][i];
                     var athlete = entry.athlete;
 
@@ -257,12 +257,12 @@ function parse_JSON(json) {
                             timestamp: entry.timestamp,
                             score: entry.score
                         });
-                    }
 
-                    if(athlete in athletes)
-                        wods[level][wod][gender].splice(i, 1);
-                    else
-                        athletes[athlete] = true;
+                        if(athlete in athletes)
+                            wods[level][wod][gender].splice(i--, 1);
+                        else
+                            athletes[athlete] = true;
+                    }
                 }
         }
 
@@ -280,7 +280,7 @@ function load_JSONP(json) {
     var hash = decodeURI(window.location.hash.substr(1)).trim();
     var cutoff = parseInt(hash);
     if(!isFinite(cutoff) || cutoff < 1)
-        cutoff = 5;
+        cutoff = -1;
 
     if(hash.length && hash.match(/\D/)) {
         var a = _('a');
