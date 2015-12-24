@@ -125,13 +125,12 @@ h1 {
 #weight_type span {
     cursor:pointer;
     padding:.5em;
-    border:1px solid #fff;
+    border-radius:.5em;
+    background:#53390a;
+    opacity:.75;
 }
 
-#weight_type span:before {
-    content:"[ ";
+#weight_type span:hover {
+    opacity:1;
 }
 
-#weight_type span:after {
-    content:" ]";
-}
