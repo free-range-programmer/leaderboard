@@ -197,6 +197,7 @@ function parse_JSON(json) {
         'Rx': {},
         'Scaled': {},
         'Lift': {},
+        'Body Weight': {}
     };
 
     var per_athlete = {};
