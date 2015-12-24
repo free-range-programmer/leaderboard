@@ -107,13 +107,13 @@ h1 {
 }
 
 #lift_title {
-    margin-bottom:0;
+    margin-bottom:.125em;
 }
 
 #weight_type {
+    margin:1em;
     text-align:center;
     font:14pt helvetica;
-    cursor:pointer;
     -webkit-touch-callout: none;
       -webkit-user-select: none;
        -khtml-user-select: none;
@@ -122,10 +122,16 @@ h1 {
               user-select: none;
 }
 
-#weight_type:before {
+#weight_type span {
+    cursor:pointer;
+    padding:.5em;
+    border:1px solid #fff;
+}
+
+#weight_type span:before {
     content:"[ ";
 }
 
-#weight_type:after {
+#weight_type span:after {
     content:" ]";
 }

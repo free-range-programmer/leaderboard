@@ -350,7 +350,7 @@ function show_leaderboard() {
 }
 
 function initialize_buttons() {
-    $('weight_type').onclick = function() {
+    $('rank').onclick = function() {
         if(BW) {
             BW = false;
             this.innerHTML = 'absolute weight';
