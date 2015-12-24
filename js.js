@@ -5,6 +5,9 @@
 // google sheets
 var URL = 'https://spreadsheets.google.com/feeds/list/1bjT_-YNPEP60dvXaX4SPRoficz7073W9Cf-wZstS97Q/1/public/values?alt=json-in-script&callback=load_JSONP'
 
+var BW = false;
+var JSON = null;
+
 /******************************************************************************/
 /*** Supplementary Functions **************************************************/
 /******************************************************************************/
@@ -200,6 +203,8 @@ function parse_JSON(json) {
         'Body Weight': {}
     };
 
+    var bw = BW;
+
     var per_athlete = {};
 
     var lines = json.feed.entry;
@@ -231,11 +236,37 @@ function parse_JSON(json) {
         }
     }
 
+    if(bw) {
+        // process body weights
+        var weights = wods['Body Weight'];
+        var body_weights = {};
+
+        for(var i in weights)
+            for(gender in weights[i])
+                for(var j in weights[i][gender]) {
+                    var people = weights[i][gender];
+                    body_weights[people[j].athlete] = people[j].score;
+                }
+    }
+
     // sort
     for(var level in wods)
-        for(var wod in wods[level])
-            for(var gender in wods[level][wod])
-                wods[level][wod][gender] = wods[level][wod][gender].sort(compare_PRs);
+        if(level !== 'Body Weight')
+            for(var wod in wods[level])
+                for(var gender in wods[level][wod]) {
+                    if(level == 'Lift' && bw) {
+                        var selected_athletes = [];
+                        var athletes = wods[level][wod][gender];
+                        for(i in athletes)
+                            if(athletes[i].athlete in body_weights) {
+                                athletes[i].score = Math.round(100 * parseFloat(athletes[i].score) / parseFloat(body_weights[athletes[i].athlete])).toString();
+                                selected_athletes.push(athletes[i]);
+                            }
+                        wods[level][wod][gender] = selected_athletes.sort(compare_PRs); 
+                    }
+                    else
+                        wods[level][wod][gender] = wods[level][wod][gender].sort(compare_PRs); 
+                }
 
     // eliminate duplicate athletes
     for(var level in wods)
@@ -275,6 +306,7 @@ function parse_JSON(json) {
 
 // callback function for the JSONP request
 function load_JSONP(json) {
+    JSON = json;
     var results = parse_JSON(json);
 
     // #stuff from the URL
@@ -317,5 +349,23 @@ function show_leaderboard() {
     window.setTimeout(show_leaderboard, 60000);
 }
 
+function initialize_buttons() {
+    $('weight_type').onclick = function() {
+        if(BW) {
+            BW = false;
+            this.innerHTML = 'absolute weight';
+            load_JSONP(JSON, BW);
+        }
+        else {
+            BW = true;
+            this.innerHTML = '% of body weight';
+            load_JSONP(JSON, BW);
+        }
+    }
+}
+
 // show the leaderboard on load;
-window.onload = show_leaderboard;
+window.onload = function() {
+    initialize_buttons();
+    show_leaderboard();
+}
