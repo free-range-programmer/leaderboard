@@ -58,7 +58,7 @@ function compare_PRs(a, b) {
 
     // AMRAP
     score = [a, b].map(function(_) {
-        return _.score.match(/^(\d+)\s*(\+\s*(\d+))?$/);
+        return _.score.match(/^(\d+\.?\d*?)\s*(\+\s*(\d+))?$/);
     });
 
     // nope?
