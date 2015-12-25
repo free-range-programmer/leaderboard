@@ -8,6 +8,8 @@ var URL = 'https://spreadsheets.google.com/feeds/list/1bjT_-YNPEP60dvXaX4SPRofic
 var BW = false;
 var JSON = null;
 
+var KG_IN_LB = 0.453;
+
 /******************************************************************************/
 /*** Supplementary Functions **************************************************/
 /******************************************************************************/
@@ -25,6 +27,22 @@ function parse(x) {
         return 0;
     else
         return parseInt(x);
+}
+
+function wilks(lbs, gender) {
+
+    var a = {
+        'Male': [-216.0475144, 16.2606339, -0.002388645, -0.00113732, 7.01863E-06, -1.291E-08],
+        'Female': [594.31747775582, -27.23842536447, 0.82112226871, -0.00930733913, 0.00004731582, -0.00000009054]
+    };
+
+    var kg = lbs*KG_IN_LB;
+
+    var c = 0;
+    for(var i=0; i<=5; i++)
+        c += a[gender][i]*Math.pow(kg, i);
+
+    return 500.0*KG_IN_LB/c;
 }
 
 /******************************************************************************/
@@ -245,7 +263,12 @@ function parse_JSON(json) {
             for(gender in weights[i])
                 for(var j in weights[i][gender]) {
                     var people = weights[i][gender];
-                    body_weights[people[j].athlete] = people[j].score;
+                    // Wilks Coefficient correction
+                    if(bw == 2)
+                        body_weights[people[j].athlete] = wilks(people[j].score, gender);
+                    // otherwise just use the body weight correction
+                    else
+                        body_weights[people[j].athlete] = 100/people[j].score;
                 }
     }
 
@@ -259,7 +282,7 @@ function parse_JSON(json) {
                         var athletes = wods[level][wod][gender];
                         for(i in athletes)
                             if(athletes[i].athlete in body_weights) {
-                                athletes[i].score = Math.round(100 * parseFloat(athletes[i].score) / parseFloat(body_weights[athletes[i].athlete])).toString();
+                                athletes[i].score = Math.round(parseFloat(athletes[i].score) * parseFloat(body_weights[athletes[i].athlete])).toString();
                                 selected_athletes.push(athletes[i]);
                             }
                         wods[level][wod][gender] = selected_athletes.sort(compare_PRs); 
@@ -350,17 +373,17 @@ function show_leaderboard() {
 }
 
 function initialize_buttons() {
+
+    var text = [
+        'absolute weight (lbs)',
+        '% of body weight',
+        'Wilks Coefficient correction (lbs)'
+        ];
+
     $('rank').onclick = function() {
-        if(BW) {
-            BW = false;
-            this.innerHTML = 'absolute weight';
-            load_JSONP(JSON, BW);
-        }
-        else {
-            BW = true;
-            this.innerHTML = '% of body weight';
-            load_JSONP(JSON, BW);
-        }
+        BW = (BW + 1) % 3;
+        this.innerHTML = text[BW];
+        load_JSONP(JSON);
     }
 }
 
