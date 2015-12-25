@@ -42,7 +42,7 @@ function wilks(lbs, gender) {
     for(var i=0; i<=5; i++)
         c += a[gender][i]*Math.pow(kg, i);
 
-    return 500.0*KG_IN_LB/c;
+    return 500.0/c;
 }
 
 /******************************************************************************/
@@ -377,7 +377,7 @@ function initialize_buttons() {
     var text = [
         'absolute weight (lbs)',
         '% of body weight',
-        'Wilks Coefficient correction (lbs)'
+        'Wilks correction (lbs)'
         ];
 
     $('rank').onclick = function() {
